@@ -2870,8 +2870,7 @@ html.od-foot-js .foot.show{transform:none}
         };
         V.dashboard.mount = function (r) {
           $("[data-wfh]", r).addEventListener("click", function () {
-            S.leaveType = "Work From Home";
-            go("leave");
+            go("wfh");
           });
           $("#kudosBtn", r).addEventListener("click", function () {
             modal(
@@ -3579,7 +3578,7 @@ html.od-foot-js .foot.show{transform:none}
             "Annual Leave",
             "Sick Leave",
             "Casual Leave",
-            "Work From Home",
+            "Maternity Leave",
             "Comp Off",
           ];
           return (
@@ -4059,9 +4058,128 @@ html.od-foot-js .foot.show{transform:none}
               go("leave");
             };
             $("#lmWfh", r).onclick = function () {
-              S.leaveType = "Work From Home";
-              go("leave");
+              go("wfh");
             };
+          };
+        })();
+        /* ===== Work From Home request page ===== */
+        (function () {
+          META.wfh = ["Work From Home Request", "Request remote working days"];
+          NAVOF.wfh = "services";
+
+          V.wfh = function () {
+            var today = new Date().toISOString().slice(0, 10);
+            return (
+              '<div class="view"><div class="crumbs" style="margin-bottom:14px"><button data-go="services">Services</button> &gt; <button data-go="leavemgmt">Leave Management</button> &gt; Work From Home</div>' +
+              '<form id="wf" novalidate><div class="form-grid">' +
+              '<div class="field"><label for="ws">Start Date <span class="req">*</span></label><input class="input" id="ws" type="date" min="' +
+              today +
+              '" value="' +
+              today +
+              '"></div>' +
+              '<div class="field"><label for="we">End Date <span class="req">*</span></label><input class="input" id="we" type="date" min="' +
+              today +
+              '" value="' +
+              today +
+              '"></div>' +
+              '<div class="field"><label for="wd">Working Days</label><input class="input" id="wd" readonly value="1"></div>' +
+              '<div class="field"><label for="wl">Work Location <span class="req">*</span></label><select class="input" id="wl"><option>Home</option><option>Other city (family home)</option></select></div>' +
+              '<div class="field full"><label for="wr">Reason <span class="req">*</span></label><input class="input" id="wr" placeholder="e.g. Internet installation visit, family function"></div>' +
+              '<div class="field"><label for="wc">Contact Number <span class="req">*</span></label><input class="input" id="wc" type="tel" value="+91 2345678474"></div>' +
+              '<div class="field"><label>Manager</label><input class="input" readonly value="David Chen"></div>' +
+              '<div class="field full"><label class="od-check" style="display:flex;gap:10px;align-items:center;font-weight:500"><input type="checkbox" id="wk" style="width:16px;height:16px"> I will be reachable during core hours, 10 AM to 4 PM</label></div>' +
+              '</div><p class="muted" style="margin-top:14px">Policy: up to 2 WFH days per week, with manager approval.</p>' +
+              '<div class="err" id="werr" role="alert" hidden style="margin-top:12px"></div>' +
+              '<div class="form-actions"><button class="btn dark" type="submit">Submit WFH Request</button><button class="btn ghost" type="button" id="wcancel">Cancel</button></div></form></div>'
+            );
+          };
+
+          V.wfh.mount = function (r) {
+            var s = $("#ws", r),
+              e = $("#we", r),
+              d = $("#wd", r),
+              er = $("#werr", r);
+            function weekdays() {
+              var out = [];
+              if (!s.value || !e.value || e.value < s.value) return out;
+              var x = new Date(s.value + "T00:00:00"),
+                end = new Date(e.value + "T00:00:00");
+              for (; x <= end; x.setDate(x.getDate() + 1)) {
+                if (x.getDay() !== 0 && x.getDay() !== 6) out.push(new Date(x));
+              }
+              return out;
+            }
+            function upd() {
+              d.value = weekdays().length;
+            }
+            s.onchange = function () {
+              if (e.value && e.value < s.value) e.value = s.value;
+              e.min = s.value;
+              upd();
+            };
+            e.onchange = upd;
+            $("#wcancel", r).onclick = function () {
+              go("leavemgmt");
+            };
+            $("#wf", r).addEventListener("submit", function (ev) {
+              ev.preventDefault();
+              var days = weekdays(),
+                msg = "";
+              if (!s.value || !e.value)
+                msg = "Choose a start date and an end date.";
+              else if (e.value < s.value)
+                msg = "The end date must be on or after the start date.";
+              else if (!days.length)
+                msg =
+                  "Your dates fall on a weekend. Pick at least one working day.";
+              else if (!$("#wr", r).value.trim())
+                msg = "Enter a reason for working from home.";
+              else if (!$("#wc", r).value.trim())
+                msg = "Enter a contact number.";
+              else if (!$("#wk", r).checked)
+                msg = "Please confirm you will be reachable during core hours.";
+              else {
+                var perWeek = {};
+                days.forEach(function (x) {
+                  var m = new Date(x);
+                  m.setDate(m.getDate() - ((m.getDay() + 6) % 7));
+                  var k = m.toISOString().slice(0, 10);
+                  perWeek[k] = (perWeek[k] || 0) + 1;
+                });
+                for (var k in perWeek)
+                  if (perWeek[k] > 2) {
+                    msg =
+                      "Policy allows up to 2 WFH days per week. Shorten the range or split it.";
+                    break;
+                  }
+              }
+              if (msg) {
+                er.textContent = msg;
+                er.hidden = false;
+                return;
+              }
+              er.hidden = true;
+              var id =
+                  "WFH-2026-" + String(REQUESTS.length + 1).padStart(3, "0"),
+                dt = new Date();
+              REQUESTS.push({
+                id: id,
+                t: "Work From Home",
+                d:
+                  dt.getDate() +
+                  " " +
+                  MONTHS[dt.getMonth()] +
+                  " " +
+                  dt.getFullYear(),
+                s: "Pending",
+              });
+              S.pending++;
+              S.reqTab = "All";
+              S.reqQuery = "";
+              toast("WFH request " + id + " sent to your manager.");
+              go("requests");
+            });
+            upd();
           };
         })();
         function render() {
