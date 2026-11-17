@@ -2525,7 +2525,7 @@ html.od-foot-js .foot.show{transform:none}
             "Leave Management",
             "Request time off, view balances and check history",
             "out",
-            "leave",
+            "leavemgmt",
           ],
           [
             "Payroll & Payslips",
@@ -2746,24 +2746,12 @@ html.od-foot-js .foot.show{transform:none}
           var QA = [
             ["out", "Apply for leave", "leave"],
             ["card", "View Payslip", "payslip"],
-            [
-              "ticket",
-              "Raise Ticket",
-              "it",
-            ],
+            ["ticket", "Raise Ticket", "it"],
             ["file", "Submit requests", "requests"],
             ["phone", "Contact HR", "help"],
             ["chart", "View Performance", "profile"],
-            [
-              "users",
-              "Team Spaces",
-              "team",
-            ],
-            [
-              "file",
-              "Company Policy",
-              "policy",
-            ],
+            ["users", "Team Spaces", "team"],
+            ["file", "Company Policy", "policy"],
           ];
           var C = 2 * Math.PI * 54,
             off = C * (1 - 0.78);
@@ -3045,8 +3033,7 @@ html.od-foot-js .foot.show{transform:none}
             draw();
           });
           $("[data-newreq]", r).addEventListener("click", function () {
-            S.leaveType = "Annual Leave";
-            go("leave");
+            go("newrequest");
           });
           body.addEventListener("click", function (e) {
             var b = e.target.closest("[data-view]");
@@ -3596,7 +3583,7 @@ html.od-foot-js .foot.show{transform:none}
             "Comp Off",
           ];
           return (
-            '<div class="view"><div class="crumbs"><button data-go="services">Services</button> &gt; Leave Management &gt; New Request</div>' +
+            '<div class="view"><div class="crumbs"><button data-go="services">Services</button> &gt; <button data-go="leavemgmt">Leave Management</button> &gt; New Request</div>' +
             '<form id="lf" novalidate><div class="form-grid">' +
             '<div class="field full"><label for="lt">Leave Type <span class="req">*</span></label><select class="input" id="lt">' +
             types
@@ -3657,7 +3644,7 @@ html.od-foot-js .foot.show{transform:none}
               : "No file chosen";
           });
           $("#lcancel", r).addEventListener("click", function () {
-            go("services");
+            go("leavemgmt");
           });
           $("#lf", r).addEventListener("submit", function (ev) {
             ev.preventDefault();
@@ -3896,6 +3883,187 @@ html.od-foot-js .foot.show{transform:none}
           b.hidden = !n;
           b.textContent = n;
         }
+        /* ===== New Request page + Leave Management page ===== */
+        (function () {
+          var LEAVE = /Leave|Work From Home|Comp Off/;
+          META.newrequest = ["New Request", "Raise a request for approval"];
+          META.leavemgmt = [
+            "Leave Management",
+            "Balances, history and time-off requests",
+          ];
+          NAVOF.newrequest = "requests";
+          NAVOF.leavemgmt = "services";
+
+          /* ---- New Request (non-leave requests) ---- */
+          V.newrequest = function () {
+            var types = [
+              "Equipment Request",
+              "Training Request",
+              "Parking Pass",
+              "Travel Reimbursement",
+              "Access Request",
+              "Other",
+            ];
+            return (
+              '<div class="view"><div class="crumbs" style="margin-bottom:14px"><button data-go="requests">Requests</button> &gt; New Request</div>' +
+              '<form id="nrf" novalidate><div class="form-grid">' +
+              '<div class="field full"><label for="nt">Request Type <span class="req">*</span></label><select class="input" id="nt">' +
+              types
+                .map(function (t) {
+                  return "<option>" + t + "</option>";
+                })
+                .join("") +
+              "</select></div>" +
+              '<div class="field"><label for="np">Priority</label><select class="input" id="np"><option>Low</option><option selected>Medium</option><option>High</option></select></div>' +
+              '<div class="field"><label for="nd">Needed By</label><input class="input" id="nd" type="date"></div>' +
+              '<div class="field full"><label for="ns">Subject <span class="req">*</span></label><input class="input" id="ns" placeholder="Short summary of what you need"></div>' +
+              '<div class="field full"><label for="nx">Details <span class="req">*</span></label><textarea class="input" id="nx" rows="4" style="height:auto;padding:10px 12px" placeholder="Add anything your approver should know"></textarea></div>' +
+              '<div class="field full"><label>Attachment</label><div class="file-row"><button class="btn ghost" type="button" id="npick">' +
+              ic("upload") +
+              'Upload File</button><span class="muted" id="nfname">No file chosen</span><input type="file" id="nfile" hidden></div></div>' +
+              '</div><div class="err" id="nerr" role="alert" hidden style="margin-top:16px"></div>' +
+              '<div class="form-actions"><button class="btn dark" type="submit">Submit Request</button><button class="btn ghost" type="button" id="ncancel">Cancel</button></div></form>' +
+              '<article class="card pad" style="margin-top:28px"><div class="row-between" style="flex-wrap:wrap"><div><b>Need time off instead?</b><div class="muted">Leave and work from home have their own form.</div></div><button class="btn ghost" data-go="leavemgmt">Go to Leave Management</button></div></article></div>'
+            );
+          };
+          V.newrequest.mount = function (r) {
+            $("#npick", r).onclick = function () {
+              $("#nfile", r).click();
+            };
+            $("#nfile", r).onchange = function () {
+              $("#nfname", r).textContent = this.files[0]
+                ? this.files[0].name
+                : "No file chosen";
+            };
+            $("#ncancel", r).onclick = function () {
+              go("requests");
+            };
+            $("#nrf", r).addEventListener("submit", function (e) {
+              e.preventDefault();
+              var er = $("#nerr", r),
+                s = $("#ns", r).value.trim(),
+                x = $("#nx", r).value.trim(),
+                nd = $("#nd", r).value,
+                msg = "";
+              if (!s) msg = "Add a subject for your request.";
+              else if (!x) msg = "Add a few details for your approver.";
+              else if (nd && nd < new Date().toISOString().slice(0, 10))
+                msg = "The needed-by date cannot be in the past.";
+              if (msg) {
+                er.textContent = msg;
+                er.hidden = false;
+                return;
+              }
+              var id =
+                  "REQ-2026-" + String(REQUESTS.length + 1).padStart(3, "0"),
+                dt = new Date();
+              REQUESTS.push({
+                id: id,
+                t: $("#nt", r).value,
+                d:
+                  dt.getDate() +
+                  " " +
+                  MONTHS[dt.getMonth()] +
+                  " " +
+                  dt.getFullYear(),
+                s: "Pending",
+              });
+              S.pending++;
+              S.reqTab = "All";
+              S.reqQuery = "";
+              toast("Request " + id + " submitted for approval.");
+              go("requests");
+            });
+          };
+
+          /* ---- Leave Management (balances + history + apply) ---- */
+          var BAL = [
+            ["Annual Leave", 12, 18],
+            ["Sick Leave", 6, 8],
+            ["Casual Leave", 4, 6],
+            ["Comp Off", 1, 2],
+          ];
+          var PAST = [
+            {
+              id: "LV-2026-014",
+              t: "Annual Leave",
+              d: "02 Aug 2026",
+              s: "Approved",
+            },
+            {
+              id: "LV-2026-009",
+              t: "Sick Leave",
+              d: "11 Jun 2026",
+              s: "Approved",
+            },
+            {
+              id: "LV-2026-003",
+              t: "Casual Leave",
+              d: "22 Dec 2025",
+              s: "Approved",
+            },
+          ];
+          V.leavemgmt = function () {
+            return (
+              '<div class="view"><div class="crumbs" style="margin-bottom:14px"><button data-go="services">Services</button> &gt; Leave Management</div>' +
+              '<section class="stats">' +
+              BAL.map(function (b, i) {
+                var c = [
+                  "var(--rail-edge)",
+                  "var(--green)",
+                  "var(--amber)",
+                  "var(--red)",
+                ][i];
+                return (
+                  '<div class="stat" style="border-left-color:' +
+                  c +
+                  '"><div class="l">' +
+                  b[0] +
+                  '</div><div class="v tnum">' +
+                  b[1] +
+                  ' <span class="muted" style="font-size:14px;font-weight:500">of ' +
+                  b[2] +
+                  " days</span></div></div>"
+                );
+              }).join("") +
+              "</section>" +
+              '<div class="toolbar" style="margin-top:24px"><h2 class="card-title">Leave history</h2><div style="display:flex;gap:12px;flex-wrap:wrap"><button class="btn ghost" id="lmWfh">Request WFH</button><button class="btn primary" id="lmApply">' +
+              ic("plus") +
+              "Apply for Leave</button></div></div>" +
+              '<div class="tbl-wrap"><table><thead><tr><th>Request ID</th><th style="width:100%">Leave Type</th><th>Date Submitted</th><th>Status</th></tr></thead><tbody id="lmBody"></tbody></table></div></div>'
+            );
+          };
+          V.leavemgmt.mount = function (r) {
+            var rows = REQUESTS.filter(function (x) {
+              return LEAVE.test(x.t);
+            }).concat(PAST);
+            $("#lmBody", r).innerHTML = rows
+              .map(function (x) {
+                return (
+                  "<tr><td>" +
+                  x.id +
+                  "</td><td>" +
+                  esc(x.t) +
+                  '</td><td class="muted tnum">' +
+                  x.d +
+                  '</td><td class="' +
+                  txtFor(x.s) +
+                  '">' +
+                  x.s +
+                  "</td></tr>"
+                );
+              })
+              .join("");
+            $("#lmApply", r).onclick = function () {
+              S.leaveType = "Annual Leave";
+              go("leave");
+            };
+            $("#lmWfh", r).onclick = function () {
+              S.leaveType = "Work From Home";
+              go("leave");
+            };
+          };
+        })();
         function render() {
           var h = (location.hash || "").replace("#", "");
           var ok = Object.prototype.hasOwnProperty.call(V, h);
@@ -4089,235 +4257,1317 @@ html.od-foot-js .foot.show{transform:none}
           paint();
         }
 
+        /* ===================== extra pages: Travel, IT, Benefits, Training, Team, Policy, Calendar ===================== */
+        (function () {
+          P.left = '<path d="m15 18-6-6 6-6"/>';
+          P.right = '<path d="m9 18 6-6-6-6"/>';
+          var LM = [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
+          ];
+          var DAYS = [
+            "Sunday",
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+          ];
+          var pad = function (n) {
+            return String(n).padStart(2, "0");
+          };
+          var rs = function (n) {
+            return "₹" + Number(n).toLocaleString("en-IN");
+          };
+          var key = function (y, m, d) {
+            return y + "-" + pad(m + 1) + "-" + pad(d);
+          };
+          var tdy = function () {
+            var d = new Date();
+            return (
+              d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear()
+            );
+          };
+          var ini = function (n) {
+            return n
+              .split(" ")
+              .map(function (w) {
+                return w[0];
+              })
+              .slice(0, 2)
+              .join("");
+          };
+          function pl(s) {
+            return /^(Approved|Resolved|Completed|Acknowledged|In office)$/.test(
+              s,
+            )
+              ? "ok"
+              : /^(Pending|Open|On leave)$/.test(s)
+                ? "warn"
+                : /^(Rejected|Closed)$/.test(s)
+                  ? "bad"
+                  : "info";
+          }
+          var pill = function (s) {
+            return '<span class="pill ' + pl(s) + '">' + s + "</span>";
+          };
+          var crumbs = function (t) {
+            return (
+              '<div class="crumbs" style="margin-bottom:14px"><button data-go="services">Services</button> &gt; ' +
+              t +
+              "</div>"
+            );
+          };
+          var stats = function (a) {
+            return (
+              '<section class="stats">' +
+              a
+                .map(function (x) {
+                  return (
+                    '<div class="stat" style="border-left-color:' +
+                    x[2] +
+                    '"><div class="l">' +
+                    x[0] +
+                    '</div><div class="v tnum">' +
+                    x[1] +
+                    "</div></div>"
+                  );
+                })
+                .join("") +
+              "</section>"
+            );
+          };
+          var fld = function (id, l, h) {
+            return (
+              '<div class="field"><label for="' +
+              id +
+              '">' +
+              l +
+              "</label>" +
+              h +
+              "</div>"
+            );
+          };
+          var sel = function (id, o) {
+            return (
+              '<select class="input" id="' +
+              id +
+              '">' +
+              o
+                .map(function (x) {
+                  return "<option>" + x + "</option>";
+                })
+                .join("") +
+              "</select>"
+            );
+          };
+          var inp = function (id, v, t, ph) {
+            return (
+              '<input class="input" id="' +
+              id +
+              '" type="' +
+              (t || "text") +
+              '" value="' +
+              esc(v || "") +
+              '" placeholder="' +
+              (ph || "") +
+              '">'
+            );
+          };
+          var ERR = '<div class="err" id="mErr" role="alert" hidden></div>';
+          var OK = function (t) {
+            return (
+              '<button class="btn ghost" data-close>Cancel</button><button class="btn primary" id="mOk">' +
+              t +
+              "</button>"
+            );
+          };
+          function bad(w, m) {
+            var e = $("#mErr", w);
+            e.textContent = m;
+            e.hidden = false;
+          }
+          var table = function (h, id) {
+            return (
+              '<div class="tbl-wrap"><table><thead><tr>' +
+              h
+                .map(function (x, i) {
+                  return (
+                    "<th" +
+                    (x[1] ? ' style="width:100%"' : "") +
+                    ">" +
+                    (x[0] || x) +
+                    "</th>"
+                  );
+                })
+                .join("") +
+              '</tr></thead><tbody id="' +
+              id +
+              '"></tbody></table></div>'
+            );
+          };
+          var tabs = function (list, cur, a) {
+            return (
+              '<div class="tabs" role="tablist">' +
+              list
+                .map(function (t) {
+                  return (
+                    '<button role="tab" aria-selected="' +
+                    (t === cur) +
+                    '" data-' +
+                    a +
+                    '="' +
+                    t +
+                    '">' +
+                    t +
+                    "</button>"
+                  );
+                })
+                .join("") +
+              "</div>"
+            );
+          };
+          var srch = function (id, ph) {
+            return (
+              '<div class="search-wrap" style="flex:1;min-width:200px">' +
+              ic("search") +
+              '<input class="input" id="' +
+              id +
+              '" type="search" placeholder="' +
+              ph +
+              '" aria-label="' +
+              ph +
+              '"></div>'
+            );
+          };
 
-/* ===================== extra pages: Travel, IT, Benefits, Training, Team, Policy, Calendar ===================== */
-(function () {
-  P.left = '<path d="m15 18-6-6 6-6"/>'; P.right = '<path d="m9 18 6-6-6-6"/>';
-  var LM = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  var pad = function (n) { return String(n).padStart(2, '0'); };
-  var rs = function (n) { return '₹' + Number(n).toLocaleString('en-IN'); };
-  var key = function (y, m, d) { return y + '-' + pad(m + 1) + '-' + pad(d); };
-  var tdy = function () { var d = new Date(); return d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); };
-  var ini = function (n) { return n.split(' ').map(function (w) { return w[0]; }).slice(0, 2).join(''); };
-  function pl(s) { return /^(Approved|Resolved|Completed|Acknowledged|In office)$/.test(s) ? 'ok' : /^(Pending|Open|On leave)$/.test(s) ? 'warn' : /^(Rejected|Closed)$/.test(s) ? 'bad' : 'info'; }
-  var pill = function (s) { return '<span class="pill ' + pl(s) + '">' + s + '</span>'; };
-  var crumbs = function (t) { return '<div class="crumbs" style="margin-bottom:14px"><button data-go="services">Services</button> &gt; ' + t + '</div>'; };
-  var stats = function (a) { return '<section class="stats">' + a.map(function (x) { return '<div class="stat" style="border-left-color:' + x[2] + '"><div class="l">' + x[0] + '</div><div class="v tnum">' + x[1] + '</div></div>'; }).join('') + '</section>'; };
-  var fld = function (id, l, h) { return '<div class="field"><label for="' + id + '">' + l + '</label>' + h + '</div>'; };
-  var sel = function (id, o) { return '<select class="input" id="' + id + '">' + o.map(function (x) { return '<option>' + x + '</option>'; }).join('') + '</select>'; };
-  var inp = function (id, v, t, ph) { return '<input class="input" id="' + id + '" type="' + (t || 'text') + '" value="' + esc(v || '') + '" placeholder="' + (ph || '') + '">'; };
-  var ERR = '<div class="err" id="mErr" role="alert" hidden></div>';
-  var OK = function (t) { return '<button class="btn ghost" data-close>Cancel</button><button class="btn primary" id="mOk">' + t + '</button>'; };
-  function bad(w, m) { var e = $('#mErr', w); e.textContent = m; e.hidden = false; }
-  var table = function (h, id) { return '<div class="tbl-wrap"><table><thead><tr>' + h.map(function (x, i) { return '<th' + (x[1] ? ' style="width:100%"' : '') + '>' + (x[0] || x) + '</th>'; }).join('') + '</tr></thead><tbody id="' + id + '"></tbody></table></div>'; };
-  var tabs = function (list, cur, a) { return '<div class="tabs" role="tablist">' + list.map(function (t) { return '<button role="tab" aria-selected="' + (t === cur) + '" data-' + a + '="' + t + '">' + t + '</button>'; }).join('') + '</div>'; };
-  var srch = function (id, ph) { return '<div class="search-wrap" style="flex:1;min-width:200px">' + ic('search') + '<input class="input" id="' + id + '" type="search" placeholder="' + ph + '" aria-label="' + ph + '"></div>'; };
+          /* ---------- sample data ---------- */
+          var X = {
+            claims: [
+              [
+                "TRV-1045",
+                "Hotel, Jaipur offsite",
+                "Stay",
+                "30 Oct 2026",
+                6800,
+                "Rejected",
+              ],
+              [
+                "TRV-1044",
+                "Cab to airport",
+                "Local travel",
+                "28 Oct 2026",
+                1150,
+                "Approved",
+              ],
+              [
+                "TRV-1043",
+                "Client lunch",
+                "Meals",
+                "21 Oct 2026",
+                2300,
+                "Pending",
+              ],
+              [
+                "TRV-1042",
+                "Client visit, Pune",
+                "Travel",
+                "12 Oct 2026",
+                8450,
+                "Approved",
+              ],
+            ],
+            tickets: [
+              [
+                "#91203",
+                "Laptop battery draining fast",
+                "Hardware",
+                "Medium",
+                "In Progress",
+                "30 Oct 2026",
+              ],
+              [
+                "#90887",
+                "Monitor replacement",
+                "Hardware",
+                "High",
+                "Rejected",
+                "21 Aug 2026",
+              ],
+              [
+                "#4521",
+                "VPN access not working",
+                "Network",
+                "Medium",
+                "Resolved",
+                "14 Dec 2025",
+              ],
+            ],
+            plan: 1,
+            deps: [
+              ["Ranjeet Sharma", "Father", "1962"],
+              ["Meena Sharma", "Mother", "1965"],
+            ],
+            courses: [
+              [
+                "Security Compliance Training",
+                "Compliance",
+                "45 min",
+                "Online",
+                100,
+              ],
+              ["Data Privacy Refresher", "Compliance", "30 min", "Online", 100],
+              [
+                "Leadership Development",
+                "Leadership",
+                "6 weeks",
+                "Blended",
+                40,
+              ],
+              [
+                "Effective Communication Workshop",
+                "Soft Skills",
+                "1 day",
+                "In person",
+                10,
+              ],
+              [
+                "Advanced Excel for Analysts",
+                "Technical",
+                "3 hours",
+                "Online",
+                null,
+              ],
+              [
+                "Digital Marketing Analytics",
+                "Technical",
+                "4 weeks",
+                "Online",
+                null,
+              ],
+              [
+                "Project Management Essentials",
+                "Leadership",
+                "2 days",
+                "In person",
+                null,
+              ],
+              [
+                "Anti-Harassment Awareness",
+                "Compliance",
+                "40 min",
+                "Online",
+                null,
+              ],
+            ],
+            team: [
+              ["David Chen", "Marketing Manager", "In office"],
+              ["Akansha Johnson", "Senior Marketing Analyst", "In office"],
+              ["Rhea Kapoor", "Content Strategist", "In office"],
+              ["Meera Iyer", "Brand Designer", "Work from home"],
+              ["Arjun Nair", "Performance Marketer", "On leave"],
+              ["Sana Qureshi", "Marketing Associate", "Work from home"],
+            ],
+            spaces: [
+              ["Marketing Team", "12 members", true],
+              ["Q4 Campaign Planning", "8 members", true],
+              ["Design Reviews", "15 members", false],
+              ["Wellness Club", "46 members", false],
+            ],
+            pol: [
+              [
+                "Code of Conduct",
+                "Conduct",
+                "12 Jan 2026",
+                "v3.2",
+                true,
+                "Sets out the behaviour we expect from everyone at work: respect, honesty, fair dealing and care for company assets.",
+              ],
+              [
+                "Wellness Leave Policy",
+                "Leave",
+                "28 Oct 2026",
+                "v1.0",
+                false,
+                "Adds two paid wellness days a year on top of annual leave. Book them like any other leave, with one day notice.",
+              ],
+              [
+                "Work From Home Policy",
+                "Workplace",
+                "03 Mar 2026",
+                "v2.1",
+                true,
+                "Up to two WFH days a week with manager approval. Be reachable during core hours, 10 AM to 4 PM.",
+              ],
+              [
+                "Data Privacy & Security",
+                "Compliance",
+                "15 Jun 2026",
+                "v4.0",
+                true,
+                "Rules for handling personal and client data, strong passwords, device locking and reporting incidents within 24 hours.",
+              ],
+              [
+                "Travel & Expense Policy",
+                "Finance",
+                "20 Aug 2026",
+                "v2.4",
+                false,
+                "Pre-approve trips, book through the portal, and submit claims with receipts within 30 days of travel.",
+              ],
+              [
+                "Anti-Harassment Policy",
+                "Conduct",
+                "10 Feb 2026",
+                "v2.0",
+                true,
+                "Zero tolerance for harassment. Explains how to raise a concern and how complaints are handled confidentially.",
+              ],
+              [
+                "IT Acceptable Use",
+                "IT",
+                "05 May 2026",
+                "v1.8",
+                true,
+                "Company devices and accounts are for work use. Install only approved software and report lost devices straight away.",
+              ],
+            ],
+            tab: { tr: "All" },
+            cal: null,
+            events: [],
+          };
+          var PLANS = [
+            ["Basic", 300000, 0, "Hospitalisation, day-care and pre/post care"],
+            [
+              "Plus",
+              500000,
+              0,
+              "Basic plus maternity, OPD up to ₹10,000 and ambulance",
+            ],
+            [
+              "Premium",
+              1000000,
+              1200,
+              "Plus critical illness, dental and international cover",
+            ],
+          ];
 
-  /* ---------- sample data ---------- */
-  var X = {
-    claims: [['TRV-1045', 'Hotel, Jaipur offsite', 'Stay', '30 Oct 2026', 6800, 'Rejected'], ['TRV-1044', 'Cab to airport', 'Local travel', '28 Oct 2026', 1150, 'Approved'], ['TRV-1043', 'Client lunch', 'Meals', '21 Oct 2026', 2300, 'Pending'], ['TRV-1042', 'Client visit, Pune', 'Travel', '12 Oct 2026', 8450, 'Approved']],
-    tickets: [['#91203', 'Laptop battery draining fast', 'Hardware', 'Medium', 'In Progress', '30 Oct 2026'], ['#90887', 'Monitor replacement', 'Hardware', 'High', 'Rejected', '21 Aug 2026'], ['#4521', 'VPN access not working', 'Network', 'Medium', 'Resolved', '14 Dec 2025']],
-    plan: 1, deps: [['Ranjeet Sharma', 'Father', '1962'], ['Meena Sharma', 'Mother', '1965']],
-    courses: [['Security Compliance Training', 'Compliance', '45 min', 'Online', 100], ['Data Privacy Refresher', 'Compliance', '30 min', 'Online', 100], ['Leadership Development', 'Leadership', '6 weeks', 'Blended', 40], ['Effective Communication Workshop', 'Soft Skills', '1 day', 'In person', 10], ['Advanced Excel for Analysts', 'Technical', '3 hours', 'Online', null], ['Digital Marketing Analytics', 'Technical', '4 weeks', 'Online', null], ['Project Management Essentials', 'Leadership', '2 days', 'In person', null], ['Anti-Harassment Awareness', 'Compliance', '40 min', 'Online', null]],
-    team: [['David Chen', 'Marketing Manager', 'In office'], ['Akansha Johnson', 'Senior Marketing Analyst', 'In office'], ['Rhea Kapoor', 'Content Strategist', 'In office'], ['Meera Iyer', 'Brand Designer', 'Work from home'], ['Arjun Nair', 'Performance Marketer', 'On leave'], ['Sana Qureshi', 'Marketing Associate', 'Work from home']],
-    spaces: [['Marketing Team', '12 members', true], ['Q4 Campaign Planning', '8 members', true], ['Design Reviews', '15 members', false], ['Wellness Club', '46 members', false]],
-    pol: [['Code of Conduct', 'Conduct', '12 Jan 2026', 'v3.2', true, 'Sets out the behaviour we expect from everyone at work: respect, honesty, fair dealing and care for company assets.'], ['Wellness Leave Policy', 'Leave', '28 Oct 2026', 'v1.0', false, 'Adds two paid wellness days a year on top of annual leave. Book them like any other leave, with one day notice.'], ['Work From Home Policy', 'Workplace', '03 Mar 2026', 'v2.1', true, 'Up to two WFH days a week with manager approval. Be reachable during core hours, 10 AM to 4 PM.'], ['Data Privacy & Security', 'Compliance', '15 Jun 2026', 'v4.0', true, 'Rules for handling personal and client data, strong passwords, device locking and reporting incidents within 24 hours.'], ['Travel & Expense Policy', 'Finance', '20 Aug 2026', 'v2.4', false, 'Pre-approve trips, book through the portal, and submit claims with receipts within 30 days of travel.'], ['Anti-Harassment Policy', 'Conduct', '10 Feb 2026', 'v2.0', true, 'Zero tolerance for harassment. Explains how to raise a concern and how complaints are handled confidentially.'], ['IT Acceptable Use', 'IT', '05 May 2026', 'v1.8', true, 'Company devices and accounts are for work use. Install only approved software and report lost devices straight away.']],
-    tab: { tr: 'All' }, cal: null, events: []
-  };
-  var PLANS = [['Basic', 300000, 0, 'Hospitalisation, day-care and pre/post care'], ['Plus', 500000, 0, 'Basic plus maternity, OPD up to ₹10,000 and ambulance'], ['Premium', 1000000, 1200, 'Plus critical illness, dental and international cover']];
+          /* ---------- Travel & Expenses ---------- */
+          V.travel = function () {
+            return (
+              '<div class="view">' +
+              crumbs("Travel &amp; Expenses") +
+              '<div id="trStats"></div><div class="toolbar" style="margin-top:22px"><h2 class="card-title">My claims</h2><button class="btn primary" id="trNew">' +
+              ic("plus") +
+              "New Claim</button></div>" +
+              table(
+                [
+                  "Claim ID",
+                  ["Description", 1],
+                  "Category",
+                  "Date",
+                  "Amount",
+                  "Status",
+                ],
+                "trBody",
+              ) +
+              "</div>"
+            );
+          };
+          V.travel.mount = function (r) {
+            function draw() {
+              var s = function (n) {
+                return X.claims
+                  .filter(function (c) {
+                    return c[5] === n;
+                  })
+                  .reduce(function (a, c) {
+                    return a + c[4];
+                  }, 0);
+              };
+              $("#trStats", r).innerHTML = stats([
+                [
+                  "Total Claimed",
+                  rs(
+                    X.claims.reduce(function (a, c) {
+                      return a + c[4];
+                    }, 0),
+                  ),
+                  "var(--rail-edge)",
+                ],
+                ["Pending", rs(s("Pending")), "var(--amber)"],
+                ["Approved", rs(s("Approved")), "var(--green)"],
+                ["Rejected", rs(s("Rejected")), "var(--red)"],
+              ]);
+              $("#trBody", r).innerHTML = X.claims
+                .map(function (c) {
+                  return (
+                    "<tr><td>" +
+                    c[0] +
+                    "</td><td>" +
+                    esc(c[1]) +
+                    "</td><td>" +
+                    c[2] +
+                    '</td><td class="tnum muted">' +
+                    c[3] +
+                    '</td><td class="tnum">' +
+                    rs(c[4]) +
+                    "</td><td>" +
+                    pill(c[5]) +
+                    "</td></tr>"
+                  );
+                })
+                .join("");
+            }
+            $("#trNew", r).onclick = function () {
+              modal(
+                "New expense claim",
+                '<div class="edit-form">' +
+                  fld(
+                    "xc",
+                    "Category",
+                    sel("xc", [
+                      "Travel",
+                      "Stay",
+                      "Meals",
+                      "Local travel",
+                      "Other",
+                    ]),
+                  ) +
+                  fld("xa", "Amount (₹)", inp("xa", "", "number", "0")) +
+                  fld(
+                    "xd",
+                    "Description",
+                    inp("xd", "", "text", "What was this for?"),
+                  ) +
+                  "</div>" +
+                  ERR,
+                OK("Submit claim"),
+                function (w) {
+                  $("#mOk", w).onclick = function () {
+                    var a = +$("#xa", w).value,
+                      d = $("#xd", w).value.trim();
+                    if (!(a > 0))
+                      return bad(w, "Enter an amount greater than zero.");
+                    if (!d) return bad(w, "Add a short description.");
+                    X.claims.unshift([
+                      "TRV-" + (1046 + X.claims.length - 4),
+                      d,
+                      $("#xc", w).value,
+                      tdy(),
+                      a,
+                      "Pending",
+                    ]);
+                    closeModal();
+                    draw();
+                    toast("Claim submitted for approval.");
+                  };
+                },
+              );
+            };
+            draw();
+          };
 
-  /* ---------- Travel & Expenses ---------- */
-  V.travel = function () {
-    return '<div class="view">' + crumbs('Travel &amp; Expenses') + '<div id="trStats"></div><div class="toolbar" style="margin-top:22px"><h2 class="card-title">My claims</h2><button class="btn primary" id="trNew">' + ic('plus') + 'New Claim</button></div>' + table(['Claim ID', ['Description', 1], 'Category', 'Date', 'Amount', 'Status'], 'trBody') + '</div>';
-  };
-  V.travel.mount = function (r) {
-    function draw() {
-      var s = function (n) { return X.claims.filter(function (c) { return c[5] === n; }).reduce(function (a, c) { return a + c[4]; }, 0); };
-      $('#trStats', r).innerHTML = stats([['Total Claimed', rs(X.claims.reduce(function (a, c) { return a + c[4]; }, 0)), 'var(--rail-edge)'], ['Pending', rs(s('Pending')), 'var(--amber)'], ['Approved', rs(s('Approved')), 'var(--green)'], ['Rejected', rs(s('Rejected')), 'var(--red)']]);
-      $('#trBody', r).innerHTML = X.claims.map(function (c) { return '<tr><td>' + c[0] + '</td><td>' + esc(c[1]) + '</td><td>' + c[2] + '</td><td class="tnum muted">' + c[3] + '</td><td class="tnum">' + rs(c[4]) + '</td><td>' + pill(c[5]) + '</td></tr>'; }).join('');
-    }
-    $('#trNew', r).onclick = function () {
-      modal('New expense claim', '<div class="edit-form">' + fld('xc', 'Category', sel('xc', ['Travel', 'Stay', 'Meals', 'Local travel', 'Other'])) + fld('xa', 'Amount (₹)', inp('xa', '', 'number', '0')) + fld('xd', 'Description', inp('xd', '', 'text', 'What was this for?')) + '</div>' + ERR, OK('Submit claim'), function (w) {
-        $('#mOk', w).onclick = function () {
-          var a = +$('#xa', w).value, d = $('#xd', w).value.trim();
-          if (!(a > 0)) return bad(w, 'Enter an amount greater than zero.');
-          if (!d) return bad(w, 'Add a short description.');
-          X.claims.unshift(['TRV-' + (1046 + X.claims.length - 4), d, $('#xc', w).value, tdy(), a, 'Pending']);
-          closeModal(); draw(); toast('Claim submitted for approval.');
-        };
-      });
-    };
-    draw();
-  };
+          /* ---------- IT Support ---------- */
+          V.it = function () {
+            var eq = [
+              ["Laptop", "laptop"],
+              ["Monitor", "laptop"],
+              ["Keyboard & mouse", "laptop"],
+              ["Headset", "phone"],
+            ];
+            return (
+              '<div class="view">' +
+              crumbs("IT Support") +
+              '<div id="itStats"></div><div class="toolbar" style="margin-top:22px"><h2 class="card-title">My tickets</h2><button class="btn primary" id="itNew">' +
+              ic("plus") +
+              "Raise Ticket</button></div>" +
+              table(
+                [
+                  "Ticket",
+                  ["Subject", 1],
+                  "Category",
+                  "Priority",
+                  "Raised",
+                  "Status",
+                ],
+                "itBody",
+              ) +
+              '<h2 class="sec">Order equipment</h2><div class="svc-grid" style="margin-top:0">' +
+              eq
+                .map(function (e) {
+                  return (
+                    '<div class="svc"><div class="top"><div class="ico">' +
+                    ic(e[1]) +
+                    "</div><h3>" +
+                    e[0] +
+                    '</h3></div><button class="btn dark" data-eq="' +
+                    e[0] +
+                    '">Request</button></div>'
+                  );
+                })
+                .join("") +
+              "</div></div>"
+            );
+          };
+          V.it.mount = function (r) {
+            function draw() {
+              var n = function (s) {
+                return X.tickets.filter(function (t) {
+                  return t[4] === s;
+                }).length;
+              };
+              $("#itStats", r).innerHTML = stats([
+                ["Open", n("Open"), "var(--amber)"],
+                ["In Progress", n("In Progress"), "var(--rail-edge)"],
+                ["Resolved", n("Resolved"), "var(--green)"],
+                ["Rejected", n("Rejected"), "var(--red)"],
+              ]);
+              $("#itBody", r).innerHTML = X.tickets
+                .map(function (t) {
+                  return (
+                    "<tr><td>" +
+                    t[0] +
+                    "</td><td>" +
+                    esc(t[1]) +
+                    "</td><td>" +
+                    t[2] +
+                    "</td><td>" +
+                    t[3] +
+                    '</td><td class="tnum muted">' +
+                    t[5] +
+                    "</td><td>" +
+                    pill(t[4]) +
+                    "</td></tr>"
+                  );
+                })
+                .join("");
+            }
+            function add(cat, subj, pr) {
+              X.tickets.unshift([
+                "#" + (91204 + X.tickets.length),
+                subj,
+                cat,
+                pr,
+                "Open",
+                tdy(),
+              ]);
+              draw();
+              toast("Ticket raised. IT will respond shortly.");
+            }
+            $("#itNew", r).onclick = function () {
+              modal(
+                "Raise a ticket",
+                '<div class="edit-form">' +
+                  fld(
+                    "tc",
+                    "Category",
+                    sel("tc", [
+                      "Hardware",
+                      "Software",
+                      "Network",
+                      "Access",
+                      "Other",
+                    ]),
+                  ) +
+                  fld("tp", "Priority", sel("tp", ["Low", "Medium", "High"])) +
+                  fld("ts", "Subject", inp("ts", "", "text", "Short summary")) +
+                  "</div>" +
+                  ERR,
+                OK("Submit ticket"),
+                function (w) {
+                  $("#mOk", w).onclick = function () {
+                    var s = $("#ts", w).value.trim();
+                    if (!s)
+                      return bad(
+                        w,
+                        "Add a subject so IT knows what to look at.",
+                      );
+                    add($("#tc", w).value, s, $("#tp", w).value);
+                    closeModal();
+                  };
+                },
+              );
+            };
+            $$("[data-eq]", r).forEach(function (b) {
+              b.onclick = function () {
+                add("Equipment", b.dataset.eq + " request", "Low");
+              };
+            });
+            draw();
+          };
 
-  /* ---------- IT Support ---------- */
-  V.it = function () {
-    var eq = [['Laptop', 'laptop'], ['Monitor', 'laptop'], ['Keyboard & mouse', 'laptop'], ['Headset', 'phone']];
-    return '<div class="view">' + crumbs('IT Support') + '<div id="itStats"></div><div class="toolbar" style="margin-top:22px"><h2 class="card-title">My tickets</h2><button class="btn primary" id="itNew">' + ic('plus') + 'Raise Ticket</button></div>' + table(['Ticket', ['Subject', 1], 'Category', 'Priority', 'Raised', 'Status'], 'itBody') +
-      '<h2 class="sec">Order equipment</h2><div class="svc-grid" style="margin-top:0">' + eq.map(function (e) { return '<div class="svc"><div class="top"><div class="ico">' + ic(e[1]) + '</div><h3>' + e[0] + '</h3></div><button class="btn dark" data-eq="' + e[0] + '">Request</button></div>'; }).join('') + '</div></div>';
-  };
-  V.it.mount = function (r) {
-    function draw() {
-      var n = function (s) { return X.tickets.filter(function (t) { return t[4] === s; }).length; };
-      $('#itStats', r).innerHTML = stats([['Open', n('Open'), 'var(--amber)'], ['In Progress', n('In Progress'), 'var(--rail-edge)'], ['Resolved', n('Resolved'), 'var(--green)'], ['Rejected', n('Rejected'), 'var(--red)']]);
-      $('#itBody', r).innerHTML = X.tickets.map(function (t) { return '<tr><td>' + t[0] + '</td><td>' + esc(t[1]) + '</td><td>' + t[2] + '</td><td>' + t[3] + '</td><td class="tnum muted">' + t[5] + '</td><td>' + pill(t[4]) + '</td></tr>'; }).join('');
-    }
-    function add(cat, subj, pr) { X.tickets.unshift(['#' + (91204 + X.tickets.length), subj, cat, pr, 'Open', tdy()]); draw(); toast('Ticket raised. IT will respond shortly.'); }
-    $('#itNew', r).onclick = function () {
-      modal('Raise a ticket', '<div class="edit-form">' + fld('tc', 'Category', sel('tc', ['Hardware', 'Software', 'Network', 'Access', 'Other'])) + fld('tp', 'Priority', sel('tp', ['Low', 'Medium', 'High'])) + fld('ts', 'Subject', inp('ts', '', 'text', 'Short summary')) + '</div>' + ERR, OK('Submit ticket'), function (w) {
-        $('#mOk', w).onclick = function () { var s = $('#ts', w).value.trim(); if (!s) return bad(w, 'Add a subject so IT knows what to look at.'); add($('#tc', w).value, s, $('#tp', w).value); closeModal(); };
-      });
-    };
-    $$('[data-eq]', r).forEach(function (b) { b.onclick = function () { add('Equipment', b.dataset.eq + ' request', 'Low'); }; });
-    draw();
-  };
+          /* ---------- Benefits & Insurance ---------- */
+          V.benefits = function () {
+            return (
+              '<div class="view">' +
+              crumbs("Benefits &amp; Insurance") +
+              '<article class="card pad" id="bnCur"></article><h2 class="sec">Available plans</h2><div class="svc-grid" id="bnPlans" style="margin-top:0"></div>' +
+              '<div class="toolbar" style="margin-top:28px"><h2 class="card-title">Covered dependents</h2><button class="btn primary" id="bnAdd">' +
+              ic("plus") +
+              "Add dependent</button></div>" +
+              table([["Name", 1], "Relationship", "Born"], "bnDeps") +
+              "</div>"
+            );
+          };
+          V.benefits.mount = function (r) {
+            function draw() {
+              var p = PLANS[X.plan];
+              $("#bnCur", r).innerHTML =
+                '<div class="card-head"><h2>Your current plan</h2>' +
+                pill("Active") +
+                '</div><dl class="dl"><dt>Plan</dt><dd>' +
+                p[0] +
+                " (family floater)</dd><dt>Sum insured</dt><dd>" +
+                rs(p[1]) +
+                "</dd><dt>Your contribution</dt><dd>" +
+                (p[2] ? rs(p[2]) + " per month" : "Nil, paid by company") +
+                "</dd><dt>Policy number</dt><dd>OD-HLT-204586</dd><dt>Valid till</dt><dd>31 Mar 2027</dd><dt>Claims helpline</dt><dd>1800 123 4567</dd></dl>";
+              $("#bnPlans", r).innerHTML = PLANS.map(function (q, i) {
+                return (
+                  '<div class="svc"' +
+                  (i === X.plan ? ' style="border:2px solid var(--ink)"' : "") +
+                  "><h3>" +
+                  q[0] +
+                  " &middot; " +
+                  rs(q[1]) +
+                  "</h3><p>" +
+                  q[3] +
+                  '</p><div class="muted" style="font-size:13px">' +
+                  (q[2]
+                    ? "Extra " + rs(q[2]) + " per month"
+                    : "No extra cost") +
+                  '</div><button class="btn ' +
+                  (i === X.plan ? "ghost" : "dark") +
+                  '" data-pl="' +
+                  i +
+                  '"' +
+                  (i === X.plan ? " disabled" : "") +
+                  ">" +
+                  (i === X.plan ? "Current plan" : "Switch to " + q[0]) +
+                  "</button></div>"
+                );
+              }).join("");
+              $("#bnDeps", r).innerHTML = X.deps
+                .map(function (d) {
+                  return (
+                    "<tr><td>" +
+                    esc(d[0]) +
+                    "</td><td>" +
+                    d[1] +
+                    '</td><td class="tnum">' +
+                    d[2] +
+                    "</td></tr>"
+                  );
+                })
+                .join("");
+              $$("[data-pl]", r).forEach(function (b) {
+                b.onclick = function () {
+                  X.plan = +b.dataset.pl;
+                  draw();
+                  toast(
+                    "Plan change requested. It applies from the next policy month.",
+                  );
+                };
+              });
+            }
+            $("#bnAdd", r).onclick = function () {
+              modal(
+                "Add dependent",
+                '<div class="edit-form">' +
+                  fld("dn", "Full name", inp("dn")) +
+                  fld(
+                    "dr",
+                    "Relationship",
+                    sel("dr", ["Spouse", "Child", "Father", "Mother"]),
+                  ) +
+                  fld(
+                    "dy",
+                    "Year of birth",
+                    inp("dy", "", "number", "e.g. 1990"),
+                  ) +
+                  "</div>" +
+                  ERR,
+                OK("Add"),
+                function (w) {
+                  $("#mOk", w).onclick = function () {
+                    var n = $("#dn", w).value.trim(),
+                      y = +$("#dy", w).value;
+                    if (!n) return bad(w, "Enter the dependent's name.");
+                    if (y < 1930 || y > new Date().getFullYear())
+                      return bad(w, "Enter a valid year of birth.");
+                    X.deps.push([n, $("#dr", w).value, y]);
+                    closeModal();
+                    draw();
+                    toast("Dependent added.");
+                  };
+                },
+              );
+            };
+            draw();
+          };
 
-  /* ---------- Benefits & Insurance ---------- */
-  V.benefits = function () {
-    return '<div class="view">' + crumbs('Benefits &amp; Insurance') + '<article class="card pad" id="bnCur"></article><h2 class="sec">Available plans</h2><div class="svc-grid" id="bnPlans" style="margin-top:0"></div>' +
-      '<div class="toolbar" style="margin-top:28px"><h2 class="card-title">Covered dependents</h2><button class="btn primary" id="bnAdd">' + ic('plus') + 'Add dependent</button></div>' + table([['Name', 1], 'Relationship', 'Born'], 'bnDeps') + '</div>';
-  };
-  V.benefits.mount = function (r) {
-    function draw() {
-      var p = PLANS[X.plan];
-      $('#bnCur', r).innerHTML = '<div class="card-head"><h2>Your current plan</h2>' + pill('Active') + '</div><dl class="dl"><dt>Plan</dt><dd>' + p[0] + ' (family floater)</dd><dt>Sum insured</dt><dd>' + rs(p[1]) + '</dd><dt>Your contribution</dt><dd>' + (p[2] ? rs(p[2]) + ' per month' : 'Nil, paid by company') + '</dd><dt>Policy number</dt><dd>OD-HLT-204586</dd><dt>Valid till</dt><dd>31 Mar 2027</dd><dt>Claims helpline</dt><dd>1800 123 4567</dd></dl>';
-      $('#bnPlans', r).innerHTML = PLANS.map(function (q, i) { return '<div class="svc"' + (i === X.plan ? ' style="border:2px solid var(--ink)"' : '') + '><h3>' + q[0] + ' &middot; ' + rs(q[1]) + '</h3><p>' + q[3] + '</p><div class="muted" style="font-size:13px">' + (q[2] ? 'Extra ' + rs(q[2]) + ' per month' : 'No extra cost') + '</div><button class="btn ' + (i === X.plan ? 'ghost' : 'dark') + '" data-pl="' + i + '"' + (i === X.plan ? ' disabled' : '') + '>' + (i === X.plan ? 'Current plan' : 'Switch to ' + q[0]) + '</button></div>'; }).join('');
-      $('#bnDeps', r).innerHTML = X.deps.map(function (d) { return '<tr><td>' + esc(d[0]) + '</td><td>' + d[1] + '</td><td class="tnum">' + d[2] + '</td></tr>'; }).join('');
-      $$('[data-pl]', r).forEach(function (b) { b.onclick = function () { X.plan = +b.dataset.pl; draw(); toast('Plan change requested. It applies from the next policy month.'); }; });
-    }
-    $('#bnAdd', r).onclick = function () {
-      modal('Add dependent', '<div class="edit-form">' + fld('dn', 'Full name', inp('dn')) + fld('dr', 'Relationship', sel('dr', ['Spouse', 'Child', 'Father', 'Mother'])) + fld('dy', 'Year of birth', inp('dy', '', 'number', 'e.g. 1990')) + '</div>' + ERR, OK('Add'), function (w) {
-        $('#mOk', w).onclick = function () { var n = $('#dn', w).value.trim(), y = +$('#dy', w).value; if (!n) return bad(w, 'Enter the dependent\'s name.'); if (y < 1930 || y > new Date().getFullYear()) return bad(w, 'Enter a valid year of birth.'); X.deps.push([n, $('#dr', w).value, y]); closeModal(); draw(); toast('Dependent added.'); };
-      });
-    };
-    draw();
-  };
+          /* ---------- Training & Development ---------- */
+          V.training = function () {
+            var cats = [
+              "All",
+              "Compliance",
+              "Leadership",
+              "Technical",
+              "Soft Skills",
+            ];
+            return (
+              '<div class="view">' +
+              crumbs("Training &amp; Development") +
+              '<div id="trnStats"></div><div class="toolbar" style="margin-top:22px">' +
+              tabs(cats, X.tab.tr, "ct") +
+              srch("trnQ", "Search courses...") +
+              '</div><div class="svc-grid" id="trnGrid" style="margin-top:0"></div></div>'
+            );
+          };
+          V.training.mount = function (r) {
+            var q = $("#trnQ", r);
+            function draw() {
+              var C = X.courses,
+                done = C.filter(function (c) {
+                  return c[4] === 100;
+                }).length,
+                prog = C.filter(function (c) {
+                  return c[4] != null && c[4] < 100;
+                }).length;
+              $("#trnStats", r).innerHTML = stats([
+                ["Completed", done, "var(--green)"],
+                ["In Progress", prog, "var(--amber)"],
+                [
+                  "Available",
+                  C.filter(function (c) {
+                    return c[4] == null;
+                  }).length,
+                  "var(--rail-edge)",
+                ],
+                ["Learning Hours", "14", "var(--red)"],
+              ]);
+              var t = q.value.trim().toLowerCase();
+              var l = C.filter(function (c) {
+                return (
+                  (X.tab.tr === "All" || c[1] === X.tab.tr) &&
+                  (!t || c[0].toLowerCase().indexOf(t) > -1)
+                );
+              });
+              $("#trnGrid", r).innerHTML = l.length
+                ? l
+                    .map(function (c) {
+                      var i = C.indexOf(c),
+                        st =
+                          c[4] == null
+                            ? ""
+                            : '<div class="bar" aria-label="Progress"><i style="width:' +
+                              c[4] +
+                              '%"></i></div><div class="muted" style="font-size:12px">' +
+                              (c[4] === 100
+                                ? "Completed"
+                                : c[4] + "% complete") +
+                              "</div>";
+                      return (
+                        '<div class="svc"><div class="top"><div class="ico">' +
+                        ic("grad") +
+                        "</div><h3>" +
+                        c[0] +
+                        "</h3></div><p>" +
+                        c[1] +
+                        " &middot; " +
+                        c[2] +
+                        " &middot; " +
+                        c[3] +
+                        "</p>" +
+                        st +
+                        (c[4] == null
+                          ? '<button class="btn dark" data-en="' +
+                            i +
+                            '">Enrol</button>'
+                          : '<button class="btn ghost" disabled>' +
+                            (c[4] === 100 ? "Completed" : "Enrolled") +
+                            "</button>") +
+                        "</div>"
+                      );
+                    })
+                    .join("")
+                : '<div class="empty" style="grid-column:1/-1">No courses match your search.</div>';
+              $$("[data-en]", r).forEach(function (b) {
+                b.onclick = function () {
+                  C[+b.dataset.en][4] = 0;
+                  draw();
+                  toast("Enrolled. You will get a calendar invite.");
+                };
+              });
+            }
+            $$("[data-ct]", r).forEach(function (b) {
+              b.onclick = function () {
+                X.tab.tr = b.dataset.ct;
+                $$("[data-ct]", r).forEach(function (x) {
+                  x.setAttribute("aria-selected", x === b);
+                });
+                draw();
+              };
+            });
+            q.oninput = draw;
+            draw();
+          };
 
-  /* ---------- Training & Development ---------- */
-  V.training = function () {
-    var cats = ['All', 'Compliance', 'Leadership', 'Technical', 'Soft Skills'];
-    return '<div class="view">' + crumbs('Training &amp; Development') + '<div id="trnStats"></div><div class="toolbar" style="margin-top:22px">' + tabs(cats, X.tab.tr, 'ct') + srch('trnQ', 'Search courses...') + '</div><div class="svc-grid" id="trnGrid" style="margin-top:0"></div></div>';
-  };
-  V.training.mount = function (r) {
-    var q = $('#trnQ', r);
-    function draw() {
-      var C = X.courses, done = C.filter(function (c) { return c[4] === 100; }).length, prog = C.filter(function (c) { return c[4] != null && c[4] < 100; }).length;
-      $('#trnStats', r).innerHTML = stats([['Completed', done, 'var(--green)'], ['In Progress', prog, 'var(--amber)'], ['Available', C.filter(function (c) { return c[4] == null; }).length, 'var(--rail-edge)'], ['Learning Hours', '14', 'var(--red)']]);
-      var t = q.value.trim().toLowerCase();
-      var l = C.filter(function (c) { return (X.tab.tr === 'All' || c[1] === X.tab.tr) && (!t || c[0].toLowerCase().indexOf(t) > -1); });
-      $('#trnGrid', r).innerHTML = l.length ? l.map(function (c) {
-        var i = C.indexOf(c), st = c[4] == null ? '' : '<div class="bar" aria-label="Progress"><i style="width:' + c[4] + '%"></i></div><div class="muted" style="font-size:12px">' + (c[4] === 100 ? 'Completed' : c[4] + '% complete') + '</div>';
-        return '<div class="svc"><div class="top"><div class="ico">' + ic('grad') + '</div><h3>' + c[0] + '</h3></div><p>' + c[1] + ' &middot; ' + c[2] + ' &middot; ' + c[3] + '</p>' + st + (c[4] == null ? '<button class="btn dark" data-en="' + i + '">Enrol</button>' : '<button class="btn ghost" disabled>' + (c[4] === 100 ? 'Completed' : 'Enrolled') + '</button>') + '</div>';
-      }).join('') : '<div class="empty" style="grid-column:1/-1">No courses match your search.</div>';
-      $$('[data-en]', r).forEach(function (b) { b.onclick = function () { C[+b.dataset.en][4] = 0; draw(); toast('Enrolled. You will get a calendar invite.'); }; });
-    }
-    $$('[data-ct]', r).forEach(function (b) { b.onclick = function () { X.tab.tr = b.dataset.ct; $$('[data-ct]', r).forEach(function (x) { x.setAttribute('aria-selected', x === b); }); draw(); }; });
-    q.oninput = draw; draw();
-  };
+          /* ---------- Team Spaces ---------- */
+          V.team = function () {
+            return (
+              '<div class="view"><div class="toolbar">' +
+              srch("tmQ", "Search teammates...") +
+              '</div><div class="svc-grid" id="tmGrid" style="margin-top:0"></div><h2 class="sec">Spaces</h2><div class="svc-grid" id="spGrid" style="margin-top:0"></div></div>'
+            );
+          };
+          V.team.mount = function (r) {
+            var q = $("#tmQ", r);
+            function draw() {
+              var t = q.value.trim().toLowerCase();
+              var l = X.team.filter(function (m) {
+                return !t || (m[0] + " " + m[1]).toLowerCase().indexOf(t) > -1;
+              });
+              $("#tmGrid", r).innerHTML = l.length
+                ? l
+                    .map(function (m) {
+                      var s = m[2];
+                      return (
+                        '<div class="svc"><div class="top"><div class="av">' +
+                        ini(m[0]) +
+                        "</div><div><h3>" +
+                        m[0] +
+                        '</h3><div class="muted" style="font-size:13px">' +
+                        m[1] +
+                        "</div></div></div><div>" +
+                        pill(s) +
+                        '</div><button class="btn dark" data-msg="' +
+                        m[0] +
+                        '">Message</button></div>'
+                      );
+                    })
+                    .join("")
+                : '<div class="empty" style="grid-column:1/-1">No teammates match your search.</div>';
+              $$("[data-msg]", r).forEach(function (b) {
+                b.onclick = function () {
+                  toast("Message sent to " + b.dataset.msg + ".");
+                };
+              });
+              $("#spGrid", r).innerHTML = X.spaces
+                .map(function (s, i) {
+                  return (
+                    '<div class="svc"><div class="top"><div class="ico">' +
+                    ic("users") +
+                    "</div><h3>" +
+                    s[0] +
+                    "</h3></div><p>" +
+                    s[1] +
+                    '</p><button class="btn ' +
+                    (s[2] ? "ghost" : "dark") +
+                    '" data-sp="' +
+                    i +
+                    '">' +
+                    (s[2] ? "Joined" : "Join space") +
+                    "</button></div>"
+                  );
+                })
+                .join("");
+              $$("[data-sp]", r).forEach(function (b) {
+                b.onclick = function () {
+                  var s = X.spaces[+b.dataset.sp];
+                  s[2] = !s[2];
+                  draw();
+                  toast(s[2] ? "Joined " + s[0] + "." : "Left " + s[0] + ".");
+                };
+              });
+            }
+            q.oninput = draw;
+            draw();
+          };
 
-  /* ---------- Team Spaces ---------- */
-  V.team = function () {
-    return '<div class="view"><div class="toolbar">' + srch('tmQ', 'Search teammates...') + '</div><div class="svc-grid" id="tmGrid" style="margin-top:0"></div><h2 class="sec">Spaces</h2><div class="svc-grid" id="spGrid" style="margin-top:0"></div></div>';
-  };
-  V.team.mount = function (r) {
-    var q = $('#tmQ', r);
-    function draw() {
-      var t = q.value.trim().toLowerCase();
-      var l = X.team.filter(function (m) { return !t || (m[0] + ' ' + m[1]).toLowerCase().indexOf(t) > -1; });
-      $('#tmGrid', r).innerHTML = l.length ? l.map(function (m) { var s = m[2]; return '<div class="svc"><div class="top"><div class="av">' + ini(m[0]) + '</div><div><h3>' + m[0] + '</h3><div class="muted" style="font-size:13px">' + m[1] + '</div></div></div><div>' + pill(s) + '</div><button class="btn dark" data-msg="' + m[0] + '">Message</button></div>'; }).join('') : '<div class="empty" style="grid-column:1/-1">No teammates match your search.</div>';
-      $$('[data-msg]', r).forEach(function (b) { b.onclick = function () { toast('Message sent to ' + b.dataset.msg + '.'); }; });
-      $('#spGrid', r).innerHTML = X.spaces.map(function (s, i) { return '<div class="svc"><div class="top"><div class="ico">' + ic('users') + '</div><h3>' + s[0] + '</h3></div><p>' + s[1] + '</p><button class="btn ' + (s[2] ? 'ghost' : 'dark') + '" data-sp="' + i + '">' + (s[2] ? 'Joined' : 'Join space') + '</button></div>'; }).join('');
-      $$('[data-sp]', r).forEach(function (b) { b.onclick = function () { var s = X.spaces[+b.dataset.sp]; s[2] = !s[2]; draw(); toast(s[2] ? 'Joined ' + s[0] + '.' : 'Left ' + s[0] + '.'); }; });
-    }
-    q.oninput = draw; draw();
-  };
+          /* ---------- Company Policy ---------- */
+          V.policy = function () {
+            var cats = [
+              "All",
+              "Conduct",
+              "Leave",
+              "Workplace",
+              "Compliance",
+              "Finance",
+              "IT",
+            ];
+            return (
+              '<div class="view"><div class="toolbar">' +
+              tabs(cats, X.tab.po || "All", "pc") +
+              srch("poQ", "Search policies...") +
+              "</div>" +
+              table(
+                [
+                  ["Policy", 1],
+                  "Category",
+                  "Updated",
+                  "Version",
+                  "Status",
+                  "Details",
+                ],
+                "poBody",
+              ) +
+              "</div>"
+            );
+          };
+          V.policy.mount = function (r) {
+            var q = $("#poQ", r);
+            function draw() {
+              var t = q.value.trim().toLowerCase(),
+                c = X.tab.po || "All";
+              var l = X.pol.filter(function (p) {
+                return (
+                  (c === "All" || p[1] === c) &&
+                  (!t || p[0].toLowerCase().indexOf(t) > -1)
+                );
+              });
+              $("#poBody", r).innerHTML = l.length
+                ? l
+                    .map(function (p) {
+                      return (
+                        "<tr><td>" +
+                        p[0] +
+                        "</td><td>" +
+                        p[1] +
+                        '</td><td class="tnum muted">' +
+                        p[2] +
+                        "</td><td>" +
+                        p[3] +
+                        "</td><td>" +
+                        pill(p[4] ? "Acknowledged" : "Pending") +
+                        '</td><td><button class="link-btn" data-po="' +
+                        X.pol.indexOf(p) +
+                        '" style="font-weight:600">View</button></td></tr>'
+                      );
+                    })
+                    .join("")
+                : '<tr><td colspan="6" class="empty" style="white-space:normal">No policies match.</td></tr>';
+              $$("[data-po]", r).forEach(function (b) {
+                b.onclick = function () {
+                  var p = X.pol[+b.dataset.po];
+                  modal(
+                    p[0],
+                    '<dl class="dl"><dt>Category</dt><dd>' +
+                      p[1] +
+                      "</dd><dt>Version</dt><dd>" +
+                      p[3] +
+                      ", updated " +
+                      p[2] +
+                      '</dd></dl><p style="margin-top:14px">' +
+                      p[5] +
+                      "</p>",
+                    p[4]
+                      ? '<button class="btn ghost" data-close>Close</button>'
+                      : '<button class="btn ghost" data-close>Close</button><button class="btn primary" id="mOk">I have read and accept</button>',
+                    function (w) {
+                      if (!p[4])
+                        $("#mOk", w).onclick = function () {
+                          p[4] = true;
+                          closeModal();
+                          draw();
+                          toast("Acknowledged: " + p[0] + ".");
+                        };
+                    },
+                  );
+                };
+              });
+            }
+            $$("[data-pc]", r).forEach(function (b) {
+              b.onclick = function () {
+                X.tab.po = b.dataset.pc;
+                $$("[data-pc]", r).forEach(function (x) {
+                  x.setAttribute("aria-selected", x === b);
+                });
+                draw();
+              };
+            });
+            q.oninput = draw;
+            draw();
+          };
 
-  /* ---------- Company Policy ---------- */
-  V.policy = function () {
-    var cats = ['All', 'Conduct', 'Leave', 'Workplace', 'Compliance', 'Finance', 'IT'];
-    return '<div class="view"><div class="toolbar">' + tabs(cats, X.tab.po || 'All', 'pc') + srch('poQ', 'Search policies...') + '</div>' + table([['Policy', 1], 'Category', 'Updated', 'Version', 'Status', 'Details'], 'poBody') + '</div>';
-  };
-  V.policy.mount = function (r) {
-    var q = $('#poQ', r);
-    function draw() {
-      var t = q.value.trim().toLowerCase(), c = X.tab.po || 'All';
-      var l = X.pol.filter(function (p) { return (c === 'All' || p[1] === c) && (!t || p[0].toLowerCase().indexOf(t) > -1); });
-      $('#poBody', r).innerHTML = l.length ? l.map(function (p) { return '<tr><td>' + p[0] + '</td><td>' + p[1] + '</td><td class="tnum muted">' + p[2] + '</td><td>' + p[3] + '</td><td>' + pill(p[4] ? 'Acknowledged' : 'Pending') + '</td><td><button class="link-btn" data-po="' + X.pol.indexOf(p) + '" style="font-weight:600">View</button></td></tr>'; }).join('') : '<tr><td colspan="6" class="empty" style="white-space:normal">No policies match.</td></tr>';
-      $$('[data-po]', r).forEach(function (b) {
-        b.onclick = function () {
-          var p = X.pol[+b.dataset.po];
-          modal(p[0], '<dl class="dl"><dt>Category</dt><dd>' + p[1] + '</dd><dt>Version</dt><dd>' + p[3] + ', updated ' + p[2] + '</dd></dl><p style="margin-top:14px">' + p[5] + '</p>', p[4] ? '<button class="btn ghost" data-close>Close</button>' : '<button class="btn ghost" data-close>Close</button><button class="btn primary" id="mOk">I have read and accept</button>', function (w) {
-            if (!p[4]) $('#mOk', w).onclick = function () { p[4] = true; closeModal(); draw(); toast('Acknowledged: ' + p[0] + '.'); };
+          /* ---------- Calendar (shows live date and time) ---------- */
+          var EV = [
+            ["2026-11-06", "Navratri decor setup", "Atrium, 10:00 AM", "event"],
+            [
+              "2026-11-07",
+              "All-hands town hall",
+              "Main hall, 4:00 PM",
+              "event",
+            ],
+            ["2026-11-14", "Wellness workshop", "Room 3B, 11:30 AM", "event"],
+            ["2026-11-08", "Diwali", "Public holiday", "holiday"],
+            ["2026-11-24", "Guru Nanak Jayanti", "Public holiday", "holiday"],
+            ["2026-12-25", "Christmas", "Public holiday", "holiday"],
+            ["2026-11-29", "Next payday", "Salary credited", "pay"],
+          ].map(function (e) {
+            return { d: e[0], t: e[1], m: e[2], k: e[3] };
           });
-        };
-      });
-    }
-    $$('[data-pc]', r).forEach(function (b) { b.onclick = function () { X.tab.po = b.dataset.pc; $$('[data-pc]', r).forEach(function (x) { x.setAttribute('aria-selected', x === b); }); draw(); }; });
-    q.oninput = draw; draw();
-  };
+          for (var i = 16; i <= 20; i++)
+            EV.push({
+              d: "2026-11-" + i,
+              t: "Annual Leave",
+              m: "Pending approval",
+              k: "leave",
+            });
+          function tick() {
+            var el = $("#calClock");
+            if (!el) return;
+            var d = new Date(),
+              h = d.getHours(),
+              ap = h >= 12 ? "PM" : "AM";
+            h = h % 12 || 12;
+            el.textContent =
+              h +
+              ":" +
+              pad(d.getMinutes()) +
+              ":" +
+              pad(d.getSeconds()) +
+              " " +
+              ap;
+            $("#calDate").textContent =
+              DAYS[d.getDay()] +
+              ", " +
+              d.getDate() +
+              " " +
+              LM[d.getMonth()] +
+              " " +
+              d.getFullYear();
+          }
+          setInterval(tick, 1000);
+          V.calendar = function () {
+            return (
+              '<div class="view cal-wrap"><article class="card pad"><div class="cal-head"><h2 id="calTitle"></h2><div class="cal-nav"><button class="icon-btn" data-c="-1" aria-label="Previous month">' +
+              ic("left") +
+              '</button><button class="btn ghost" id="calToday">Today</button><button class="icon-btn" data-c="1" aria-label="Next month">' +
+              ic("right") +
+              "</button></div></div>" +
+              '<div class="cal-dow">' +
+              ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                .map(function (d) {
+                  return "<span>" + d + "</span>";
+                })
+                .join("") +
+              '</div><div class="cal-days" id="calDays"></div>' +
+              '<div class="legend"><span><i class="k-event"></i>Event</span><span><i class="k-holiday"></i>Holiday</span><span><i class="k-leave"></i>Leave</span><span><i class="k-pay"></i>Payday</span></div></article>' +
+              '<div class="stack"><article class="card pad now-card"><div class="muted" style="font-size:13px">Right now</div><div class="time tnum" id="calClock"></div><div id="calDate" style="font-weight:600"></div></article>' +
+              '<article class="card pad"><div class="card-head"><h2 id="selTitle"></h2><button class="link-btn" id="addEv">Add event</button></div><div id="selList"></div></article></div></div>'
+            );
+          };
+          V.calendar.mount = function (r) {
+            var n = new Date();
+            if (!X.cal)
+              X.cal = {
+                y: n.getFullYear(),
+                m: n.getMonth(),
+                sel: key(n.getFullYear(), n.getMonth(), n.getDate()),
+              };
+            var c = X.cal,
+              tk = key(n.getFullYear(), n.getMonth(), n.getDate());
+            var all = function () {
+              return EV.concat(X.events);
+            };
+            function list() {
+              var p = c.sel.split("-"),
+                d = new Date(+p[0], +p[1] - 1, +p[2]),
+                es = all().filter(function (e) {
+                  return e.d === c.sel;
+                });
+              $("#selTitle", r).textContent =
+                (c.sel === tk ? "Today, " : "") +
+                DAYS[d.getDay()].slice(0, 3) +
+                ", " +
+                d.getDate() +
+                " " +
+                MONTHS[d.getMonth()] +
+                " " +
+                d.getFullYear();
+              $("#selList", r).innerHTML = es.length
+                ? es
+                    .map(function (e) {
+                      return (
+                        '<div class="ev"><i class="dot-k k-' +
+                        e.k +
+                        '"></i><div><div class="t">' +
+                        esc(e.t) +
+                        '</div><div class="m">' +
+                        esc(e.m) +
+                        "</div></div></div>"
+                      );
+                    })
+                    .join("")
+                : '<div class="muted">Nothing scheduled for this day.</div>';
+            }
+            function draw() {
+              var start = (new Date(c.y, c.m, 1).getDay() + 6) % 7,
+                dim = new Date(c.y, c.m + 1, 0).getDate(),
+                cells = Math.ceil((start + dim) / 7) * 7,
+                h = "",
+                ev = all();
+              $("#calTitle", r).textContent = LM[c.m] + " " + c.y;
+              for (var i = 0; i < cells; i++) {
+                var d = new Date(c.y, c.m, 1 - start + i),
+                  k = key(d.getFullYear(), d.getMonth(), d.getDate()),
+                  es = ev.filter(function (e) {
+                    return e.d === k;
+                  });
+                h +=
+                  '<button class="cal-day' +
+                  (d.getMonth() !== c.m ? " out" : "") +
+                  (d.getDay() % 6 === 0 ? " we" : "") +
+                  (k === tk ? " today" : "") +
+                  (k === c.sel ? " sel" : "") +
+                  '" data-k="' +
+                  k +
+                  '" aria-label="' +
+                  d.getDate() +
+                  " " +
+                  LM[d.getMonth()] +
+                  (es.length ? ", " + es.length + " items" : "") +
+                  '"><b>' +
+                  d.getDate() +
+                  "</b>" +
+                  (es.length
+                    ? "<em>" +
+                      esc(es[0].t) +
+                      (es.length > 1 ? " +" + (es.length - 1) : "") +
+                      '</em><span class="dots">' +
+                      es
+                        .map(function (e) {
+                          return '<i class="k-' + e.k + '"></i>';
+                        })
+                        .join("") +
+                      "</span>"
+                    : "") +
+                  "</button>";
+              }
+              $("#calDays", r).innerHTML = h;
+              list();
+            }
+            $("#calDays", r).onclick = function (e) {
+              var b = e.target.closest("[data-k]");
+              if (!b) return;
+              c.sel = b.dataset.k;
+              var p = c.sel.split("-");
+              c.y = +p[0];
+              c.m = +p[1] - 1;
+              draw();
+            };
+            $$("[data-c]", r).forEach(function (b) {
+              b.onclick = function () {
+                var d = new Date(c.y, c.m + +b.dataset.c, 1);
+                c.y = d.getFullYear();
+                c.m = d.getMonth();
+                draw();
+              };
+            });
+            $("#calToday", r).onclick = function () {
+              var t = new Date();
+              c.y = t.getFullYear();
+              c.m = t.getMonth();
+              c.sel = key(c.y, c.m, t.getDate());
+              draw();
+            };
+            $("#addEv", r).onclick = function () {
+              modal(
+                "Add event",
+                '<div class="edit-form">' +
+                  fld("et", "Title", inp("et")) +
+                  fld("ed", "Date", inp("ed", c.sel, "date")) +
+                  fld("em", "Time", inp("em", "10:00", "time")) +
+                  "</div>" +
+                  ERR,
+                OK("Add event"),
+                function (w) {
+                  $("#mOk", w).onclick = function () {
+                    var t = $("#et", w).value.trim(),
+                      d = $("#ed", w).value;
+                    if (!t) return bad(w, "Give the event a title.");
+                    if (!d) return bad(w, "Pick a date.");
+                    X.events.push({
+                      d: d,
+                      t: t,
+                      m: $("#em", w).value || "All day",
+                      k: "event",
+                    });
+                    c.sel = d;
+                    var p = d.split("-");
+                    c.y = +p[0];
+                    c.m = +p[1] - 1;
+                    closeModal();
+                    draw();
+                    toast("Event added.");
+                  };
+                },
+              );
+            };
+            draw();
+            tick();
+          };
 
-  /* ---------- Calendar (shows live date and time) ---------- */
-  var EV = [['2026-11-06', 'Navratri decor setup', 'Atrium, 10:00 AM', 'event'], ['2026-11-07', 'All-hands town hall', 'Main hall, 4:00 PM', 'event'], ['2026-11-14', 'Wellness workshop', 'Room 3B, 11:30 AM', 'event'], ['2026-11-08', 'Diwali', 'Public holiday', 'holiday'], ['2026-11-24', 'Guru Nanak Jayanti', 'Public holiday', 'holiday'], ['2026-12-25', 'Christmas', 'Public holiday', 'holiday'], ['2026-11-29', 'Next payday', 'Salary credited', 'pay']].map(function (e) { return { d: e[0], t: e[1], m: e[2], k: e[3] }; });
-  for (var i = 16; i <= 20; i++) EV.push({ d: '2026-11-' + i, t: 'Annual Leave', m: 'Pending approval', k: 'leave' });
-  function tick() {
-    var el = $('#calClock'); if (!el) return;
-    var d = new Date(), h = d.getHours(), ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
-    el.textContent = h + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + ' ' + ap;
-    $('#calDate').textContent = DAYS[d.getDay()] + ', ' + d.getDate() + ' ' + LM[d.getMonth()] + ' ' + d.getFullYear();
-  }
-  setInterval(tick, 1000);
-  V.calendar = function () {
-    return '<div class="view cal-wrap"><article class="card pad"><div class="cal-head"><h2 id="calTitle"></h2><div class="cal-nav"><button class="icon-btn" data-c="-1" aria-label="Previous month">' + ic('left') + '</button><button class="btn ghost" id="calToday">Today</button><button class="icon-btn" data-c="1" aria-label="Next month">' + ic('right') + '</button></div></div>' +
-      '<div class="cal-dow">' + ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(function (d) { return '<span>' + d + '</span>'; }).join('') + '</div><div class="cal-days" id="calDays"></div>' +
-      '<div class="legend"><span><i class="k-event"></i>Event</span><span><i class="k-holiday"></i>Holiday</span><span><i class="k-leave"></i>Leave</span><span><i class="k-pay"></i>Payday</span></div></article>' +
-      '<div class="stack"><article class="card pad now-card"><div class="muted" style="font-size:13px">Right now</div><div class="time tnum" id="calClock"></div><div id="calDate" style="font-weight:600"></div></article>' +
-      '<article class="card pad"><div class="card-head"><h2 id="selTitle"></h2><button class="link-btn" id="addEv">Add event</button></div><div id="selList"></div></article></div></div>';
-  };
-  V.calendar.mount = function (r) {
-    var n = new Date();
-    if (!X.cal) X.cal = { y: n.getFullYear(), m: n.getMonth(), sel: key(n.getFullYear(), n.getMonth(), n.getDate()) };
-    var c = X.cal, tk = key(n.getFullYear(), n.getMonth(), n.getDate());
-    var all = function () { return EV.concat(X.events); };
-    function list() {
-      var p = c.sel.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]), es = all().filter(function (e) { return e.d === c.sel; });
-      $('#selTitle', r).textContent = (c.sel === tk ? 'Today, ' : '') + DAYS[d.getDay()].slice(0, 3) + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
-      $('#selList', r).innerHTML = es.length ? es.map(function (e) { return '<div class="ev"><i class="dot-k k-' + e.k + '"></i><div><div class="t">' + esc(e.t) + '</div><div class="m">' + esc(e.m) + '</div></div></div>'; }).join('') : '<div class="muted">Nothing scheduled for this day.</div>';
-    }
-    function draw() {
-      var start = (new Date(c.y, c.m, 1).getDay() + 6) % 7, dim = new Date(c.y, c.m + 1, 0).getDate(), cells = Math.ceil((start + dim) / 7) * 7, h = '', ev = all();
-      $('#calTitle', r).textContent = LM[c.m] + ' ' + c.y;
-      for (var i = 0; i < cells; i++) {
-        var d = new Date(c.y, c.m, 1 - start + i), k = key(d.getFullYear(), d.getMonth(), d.getDate()), es = ev.filter(function (e) { return e.d === k; });
-        h += '<button class="cal-day' + (d.getMonth() !== c.m ? ' out' : '') + (d.getDay() % 6 === 0 ? ' we' : '') + (k === tk ? ' today' : '') + (k === c.sel ? ' sel' : '') + '" data-k="' + k + '" aria-label="' + d.getDate() + ' ' + LM[d.getMonth()] + (es.length ? ', ' + es.length + ' items' : '') + '"><b>' + d.getDate() + '</b>' + (es.length ? '<em>' + esc(es[0].t) + (es.length > 1 ? ' +' + (es.length - 1) : '') + '</em><span class="dots">' + es.map(function (e) { return '<i class="k-' + e.k + '"></i>'; }).join('') + '</span>' : '') + '</button>';
-      }
-      $('#calDays', r).innerHTML = h; list();
-    }
-    $('#calDays', r).onclick = function (e) { var b = e.target.closest('[data-k]'); if (!b) return; c.sel = b.dataset.k; var p = c.sel.split('-'); c.y = +p[0]; c.m = +p[1] - 1; draw(); };
-    $$('[data-c]', r).forEach(function (b) { b.onclick = function () { var d = new Date(c.y, c.m + +b.dataset.c, 1); c.y = d.getFullYear(); c.m = d.getMonth(); draw(); }; });
-    $('#calToday', r).onclick = function () { var t = new Date(); c.y = t.getFullYear(); c.m = t.getMonth(); c.sel = key(c.y, c.m, t.getDate()); draw(); };
-    $('#addEv', r).onclick = function () {
-      modal('Add event', '<div class="edit-form">' + fld('et', 'Title', inp('et')) + fld('ed', 'Date', inp('ed', c.sel, 'date')) + fld('em', 'Time', inp('em', '10:00', 'time')) + '</div>' + ERR, OK('Add event'), function (w) {
-        $('#mOk', w).onclick = function () { var t = $('#et', w).value.trim(), d = $('#ed', w).value; if (!t) return bad(w, 'Give the event a title.'); if (!d) return bad(w, 'Pick a date.'); X.events.push({ d: d, t: t, m: $('#em', w).value || 'All day', k: 'event' }); c.sel = d; var p = d.split('-'); c.y = +p[0]; c.m = +p[1] - 1; closeModal(); draw(); toast('Event added.'); };
-      });
-    };
-    draw(); tick();
-  };
+          /* ---------- wire into the app ---------- */
+          META.travel = [
+            "Travel & Expenses",
+            "Submit reimbursements and pre-travel authorizations",
+          ];
+          META.it = ["IT Support", "Raise tickets and order equipment"];
+          META.benefits = [
+            "Benefits & Insurance",
+            "Manage your health insurance plan and dependents",
+          ];
+          META.training = [
+            "Training & Development",
+            "Browse the catalogue and track your learning",
+          ];
+          META.team = [
+            "Team Spaces",
+            "See who is in today and join team spaces",
+          ];
+          META.policy = [
+            "Company Policy",
+            "Read and acknowledge company policies",
+          ];
+          META.calendar = [
+            "Calendar",
+            "Events, holidays and leave at a glance",
+          ];
+          NAVOF.travel =
+            NAVOF.it =
+            NAVOF.benefits =
+            NAVOF.training =
+              "services";
+          NAVOF.team = NAVOF.policy = "dashboard";
+          NAVOF.calendar = "";
+          [
+            ["Travel & Expenses", "travel"],
+            ["IT Support", "it"],
+            ["Benefits & Insurance", "benefits"],
+            ["Training & Development", "training"],
+          ].forEach(function (p) {
+            SERVICES.forEach(function (s) {
+              if (s[0] === p[0]) s[3] = p[1];
+            });
+          });
 
-  /* ---------- wire into the app ---------- */
-  META.travel = ['Travel & Expenses', 'Submit reimbursements and pre-travel authorizations'];
-  META.it = ['IT Support', 'Raise tickets and order equipment'];
-  META.benefits = ['Benefits & Insurance', 'Manage your health insurance plan and dependents'];
-  META.training = ['Training & Development', 'Browse the catalogue and track your learning'];
-  META.team = ['Team Spaces', 'See who is in today and join team spaces'];
-  META.policy = ['Company Policy', 'Read and acknowledge company policies'];
-  META.calendar = ['Calendar', 'Events, holidays and leave at a glance'];
-  NAVOF.travel = NAVOF.it = NAVOF.benefits = NAVOF.training = 'services';
-  NAVOF.team = NAVOF.policy = 'dashboard'; NAVOF.calendar = '';
-  [['Travel & Expenses', 'travel'], ['IT Support', 'it'], ['Benefits & Insurance', 'benefits'], ['Training & Development', 'training']].forEach(function (p) { SERVICES.forEach(function (s) { if (s[0] === p[0]) s[3] = p[1]; }); });
-
-  var st = document.createElement('style'); st.id = 'od-pages-css';
-  st.textContent = `
+          var st = document.createElement("style");
+          st.id = "od-pages-css";
+          st.textContent = `
 .cal-wrap{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:20px;align-items:start}
 @container (max-width:880px){.cal-wrap{grid-template-columns:minmax(0,1fr)}}
 .cal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
@@ -4350,8 +5600,8 @@ a.clock:hover{background:var(--tint)}
 .bar i{display:block;height:100%;background:var(--green)}
 .svc .btn[disabled]{opacity:.6;cursor:default}
 `;
-  document.body.appendChild(st);
-})();
+          document.body.appendChild(st);
+        })();
 
         render();
       })();
